@@ -51,7 +51,13 @@ To help the reproducibility, we have provided the trained model weights and othe
 
 The datasets and pretrained model weights are released at Google Drive: https://drive.google.com/drive/folders/1iHu32xrkbNOzqbQM9qH-RXMdxxzj3TZm?usp=sharing
 
+Note that the directory names for pretrained MAGNet weights are as follows:
 
+- NCA dataset: `NCA_meta_Informer_Batteries_cycle_SLMove_lr1e-06_metalr0.005_mavg15_ftM_sl10_ll10_pl150_dm8_nh4_el1_dl2_df2_fc4_fc21_ebCycle_dtFalse_valratio0.33_test_lossawmse_vallossnw_dp0.0_bs32_wd0_mb0.25_agamma0.25_lradjtype4_0`
+
+- LFP dataset: `NE_meta_Informer_Batteries_cycle_SLMove_lr1e-06_metalr0.0075_mavg15_ftM_sl20_ll20_pl500_dm12_nh4_el2_dl2_df4_fc5_fc21_ebCycle_dtFalse_valratio0.5_test_lossawmse_vallossnw_dp0.0_bs128_wd0_mb2_agamma0.2_lradjtype4_0`
+
+  
 
 ## Reproduce from the raw data
 
@@ -82,4 +88,3 @@ You can reproduce the results in this paper using the same hyperparameters liste
 nohup python -u run_meta_NE.py &> ./log.out&
 nohup python -u run_meta_NCA.py &> ./log2.out&
 ```
-
