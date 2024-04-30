@@ -46,8 +46,7 @@ To help the reproducibility, we have provided the trained model weights and othe
 To reproduce the results, the same dependencies and core computing devices should be used. You can install the dependencies according to the `Requirements`. Additionally, you need a Ubuntu 20.04 machine with GTX 3090 GPUs. 
 
 **Data processing**
-
-Initially, you need to process the raw data to get the processed dataset. For the NCA dataset, you need to download the `NCA_data_process` from the `Figshare`. After installing the dependencies shown in the `requirements.txt`, you can run the following scripts in order to get the processed dataset used in this work:
+Initially, you need to process the raw data to get the processed dataset. For the NCA dataset, you need to download the `NCA_data_process` from the `Google drive`. After installing the dependencies shown in the `requirements.txt`, you can run the following scripts in order to get the processed dataset used in this work:
 
 1. abnormal_utils.py
 2. 2022NC_cycle_provider.py

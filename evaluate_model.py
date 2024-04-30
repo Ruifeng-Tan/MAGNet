@@ -1,5 +1,5 @@
 '''
-For a cell, evaluate on each sample. And then average the results of all samples to form the evaluation for a cell.
+Evaluate the model performance
 '''
 import json
 import os.path
@@ -32,24 +32,20 @@ torch.backends.cudnn.deterministic = True
 import argparse
 from exp.exp_main import Exp_Main
 
-
-
-def compute_EOL(df, args):
-    first_life_df = df.loc[df['Qd'] >= args.nominal_capacity * 0.8]
-    return first_life_df['cycle number'].max()
-
-
 def main():
     parser = argparse.ArgumentParser()
+
     parser.add_argument('--args_path', type=str,
                         default='./results/NE_meta_Informer_Batteries_cycle_SLMove_lr1e-06_metalr0.0075_mavg15_ftM_sl20_ll20_pl500_dm14_nh4_el2_dl2_df4_fc5_fc21_ebCycle_dtFalse_valratio0.5_test_lossawmse_vallossnw_dp0.0_bs128_wd0_mb2_agamma0.2_lradjtype4_0',
-                        help='status')
+                        help='just copy the path to the ./results/xxx of the trained model here')
+    
+    
     parser.add_argument('--save', action='store_true',
                         default=True,
-                        help='status')
+                        help='set True to save the results')
     parser.add_argument('--alpha', type=float,
                         default=2,
-                        help='status')
+                        help='the alpha for alpha accuracy')
     tmp_args = parser.parse_args()
     tmp_args.alpha = 4 if tmp_args.args_path.startswith('./results/NE') else 2
     parser = argparse.ArgumentParser()
