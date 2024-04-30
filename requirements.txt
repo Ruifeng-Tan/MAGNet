@@ -1,0 +1,16 @@
+dtaidistance==2.3.10
+einops==0.7.0
+joblib==1.2.0
+matplotlib==3.5.3
+numba==0.56.4
+numpy==1.23.4
+pandas==1.4.4
+reformer_pytorch==1.4.4
+Requests==2.31.0
+scikit_learn==1.1.2
+scipy==1.11.4
+sympy==1.12
+torch==1.9.0+cu111
+tqdm==4.64.1
+Wasserstein==1.1.0
+jupyter
