@@ -35,7 +35,7 @@ pip install -r reqruiements.txt
 
 ## Easy reproducibility
 
-To help the reproducibility, we have provided the trained model weights and other necessary files in the `Figshare`, thus you can easily see the main results in this paper. First of all, you need to download the `checkpoints`, `dataset`, `detailed_results`, `fig5` and `results`  folders from the `Figshare` and then put them under the project root folder. After that,  you can reproduce the results using the following scripts:
+To help the reproducibility, we have provided the trained model weights and other necessary files in the `Figshare`, thus you can easily see the main results in this paper. First of all, you need to download the `checkpoints`, `dataset`, `detailed_results`, `fig5` and `results`  folders from the `Google Drive` and then put them under the project root folder. After that,  you can reproduce the results using the following scripts:
 
 - evaluate_model.py: You can evaluate the model performance using this Python script.
 
