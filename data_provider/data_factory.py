@@ -1,10 +1,8 @@
-from data_provider.data_loader import Dataset_Pred, Dataset_Battery_cycle_ShortLongMove, Dataset_Battery_cycle_ShortLongMove_DA
+from data_provider.data_loader import Dataset_Pred, Dataset_Battery_cycle_ShortLongMove
 from torch.utils.data import DataLoader
 
 data_dict = {
-    'Batteries_cycle_SLMove': Dataset_Battery_cycle_ShortLongMove,
-    'DA': Dataset_Battery_cycle_ShortLongMove_DA
-    
+    'Batteries_cycle_SLMove': Dataset_Battery_cycle_ShortLongMove
 }
 
 
@@ -15,7 +13,7 @@ def data_provider_meta(args, flag, set_data):
     shuffle_flag = False
     if flag == 'test':
         batch_size = args.batch_size
-        drop_last = False
+        drop_last = True
     elif flag == 'pred' or flag == 'set_files':
         batch_size = 1
         drop_last = False

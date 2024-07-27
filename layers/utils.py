@@ -249,12 +249,6 @@ def test(model, test_loader, device, verbose=0, lossFn=None,
 
     return total_loss / len(test_loader.dataset)
 
-import torch
-from torch import nn
-
-
-
-    
 
 # Till EoF
 # taken from FNO paper:

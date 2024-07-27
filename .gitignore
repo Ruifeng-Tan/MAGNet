@@ -23,6 +23,7 @@ eggs/
 lib/
 lib64/
 parts/
+other_scripts/
 sdist/
 var/
 wheels/

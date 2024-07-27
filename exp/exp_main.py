@@ -11,7 +11,7 @@ from utils.tools import EarlyStopping, adjust_learning_rate, visual, visual_QE_v
 from utils.custom_loss import PILoss
 import torch.autograd as autograd
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_percentage_error
-from itertools import cycle
+from utils.kmeans_pytorch import kmeans
 import torch
 import torch.nn as nn
 from torch import optim
@@ -24,7 +24,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import json
 from sklearn.metrics import mean_squared_error, mean_absolute_error
-from utils.custom_loss import MMDLoss
 
 warnings.filterwarnings('ignore')
 def set_ax_font_size(ax, fontsize=10):
@@ -191,6 +190,41 @@ class Exp_Main(Exp_Basic):
         self.model.train()
         return total_loss, 0, 0, 0
 
+    def vali_new_weighted(self, set_files, setting):
+        ''' This validation considers the loss on the cell-level '''
+        cell_Qd_maes = {}
+        cell_Ed_maes = {}
+        cell_Qd_mapes = {}
+        cell_Ed_mapes = {}
+        self.model.eval()
+        with torch.no_grad():
+            for file in set_files:
+                self.args.set_files = [file]
+                condition = file.split('#')[0]
+                cell_Qd_mae, cell_Qd_mape, cell_Qd_mae_std, cell_Qd_mape_std, cell_Ed_mae, cell_Ed_mape, cell_Ed_mae_std, cell_Ed_mape_std, gt_trajectory, pred_trajectory, r2_Qd, r2_Ed = self.predict_specific_cell_new(
+                    setting, load=False,
+                    save_path='')
+                cell_Qd_maes[condition] = cell_Qd_maes.get(condition, []) + [cell_Qd_mae]
+                cell_Qd_mapes[condition] = cell_Qd_mapes.get(condition, []) + [cell_Qd_mape]
+                cell_Ed_maes[condition] = cell_Ed_maes.get(condition, []) + [cell_Ed_mae]
+                cell_Ed_mapes[condition] = cell_Ed_mapes.get(condition, []) + [cell_Ed_mape]
+        mean_cell_Qd_mapes = 0
+        mean_cell_Qd_mape_stds = []
+        for key, value in cell_Qd_mapes.items():
+            mean_cell_Qd_mapes += np.mean(value)
+            mean_cell_Qd_mape_stds += [np.mean(value)]
+        mean_cell_Qd_mapes = mean_cell_Qd_mapes / len(cell_Qd_mapes)
+
+        mean_cell_Ed_mapes = 0
+        mean_cell_Ed_mape_stds = []
+        for key, value in cell_Ed_mapes.items():
+            mean_cell_Ed_mapes += np.mean(value)
+            mean_cell_Ed_mape_stds += [np.mean(value)]
+        mean_cell_Ed_mapes = mean_cell_Ed_mapes / len(cell_Ed_mapes)
+        total_loss = (mean_cell_Qd_mapes + mean_cell_Ed_mapes) / 2
+        self.model.train()
+        return total_loss, 0, 0, 0
+
     def train_meta_pre_clustering_parallel_new_robust(self, setting):
         '''
 
@@ -311,7 +345,7 @@ class Exp_Main(Exp_Basic):
                     loss = torch.sum(loss * masks) / torch.sum(masks != 0)
                     raw_loss, proportion_loss, voltage_limitation_loss = loss - loss, loss - loss, loss - loss
                 elif self.args.loss == 'wmse':
-                    # mse for MLDG
+                    # weighted mse
                     loss = criterion(outputs, batch_y)
                     tmp_loss = 0
                     for file_i in total_Metatrain_different_files:
@@ -322,7 +356,14 @@ class Exp_Main(Exp_Basic):
                             meta_train_domain_loss_mask != 0)
                     loss = tmp_loss / len(total_Metatrain_different_files)
                     raw_loss, proportion_loss, voltage_limitation_loss = loss - loss, loss - loss, loss - loss
-                else:
+                elif self.args.loss == 'amse':
+                    loss1 = criterion(outputs, batch_y)
+                    loss1 = torch.sum(loss1 * masks) / torch.sum(masks != 0)
+                    loss2 = criterion(cycle_distance_outputs, cycle_distance_label)
+                    loss2 = torch.sum(loss2) / loss2.shape[0]
+                    loss = loss1 + self.args.auxiliary_gamma * loss2
+                    raw_loss, proportion_loss, voltage_limitation_loss = loss - loss, loss - loss, loss - loss
+                elif self.args.loss == 'awmse':
                     loss1 = criterion(outputs, batch_y)
                     loss2 = criterion(cycle_distance_outputs, cycle_distance_label)
                     loss = 0
@@ -401,7 +442,14 @@ class Exp_Main(Exp_Basic):
                             meta_test_domain_loss_mask != 0)
                     loss = tmp_loss / len(total_Metatest_different_files)
                     raw_loss, proportion_loss, voltage_limitation_loss = loss - loss, loss - loss, loss - loss
-                else:
+                elif self.args.loss == 'amse':
+                    loss1 = criterion(outputs, batch_y)
+                    loss1 = torch.sum(loss1 * masks) / torch.sum(masks != 0)
+                    loss2 = criterion(cycle_distance_outputs, cycle_distance_label)
+                    loss2 = torch.sum(loss2) / loss2.shape[0]
+                    loss = loss1 + self.args.auxiliary_gamma * loss2
+                    raw_loss, proportion_loss, voltage_limitation_loss = loss - loss, loss - loss, loss - loss
+                elif self.args.loss == 'awmse':
                     loss1 = criterion(outputs, batch_y)
                     loss2 = criterion(cycle_distance_outputs, cycle_distance_label)
                     loss = 0
@@ -474,199 +522,9 @@ class Exp_Main(Exp_Basic):
         test_loss, test_total_raw_loss, test_total_proportion_loss, test_total_voltage_limitation_loss = self.vali_new_robust(
                 test_set_files, setting,load=True)
         print(path)
-
         return self.model
 
-    def train_DA(self, setting):
-        train_source_data, train_source_loader = self._get_data(flag='train_source', set_data='DA')
-        train_target_data, train_target_loader = self._get_data(flag='train_target', set_data='DA') # revision pending
-        vali_data, vali_loader = self._get_data(flag='val')
-        test_data, test_loader = self._get_data(flag='test')
-        self.args.std = train_source_data.scaler.scale_
-        self.args.mean = train_source_data.scaler.mean_
-        self.args.max_Ed_in_train = train_source_data.max_Ed_in_train
-        self._build_model()  # build the model
-        path = os.path.join(self.args.checkpoints, setting)
-        if self.args.FT:
-            best_model_path = path + '/' + 'checkpoint.pth'
-            self.model.load_state_dict(torch.load(best_model_path))
-            frozen_names = ['enc_embedding', 'encoder', 'linear']
-            for name, parameter in self.model.named_parameters():
-                for frozen_name in frozen_names:
-                    if frozen_name in name:
-                        parameter.requires_grad = False
-            path = os.path.join(self.args.checkpoints, 'FT_' + setting)
-
-        if not os.path.exists(path):
-            os.makedirs(path)
-
-        time_now = time.time()
-
-        train_steps = len(train_source_loader)
-        early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
-
-        model_optim = self._select_optimizer()
-        criterion = self._select_criterion()
-        mmd_Loss = MMDLoss(self.device)
-
-        if self.args.use_amp:
-            scaler = torch.cuda.amp.GradScaler()
-        best_score = float('-inf')
-        iter_count = 0
-        for epoch in range(self.args.train_epochs):
-            train_loss = []
-            train_raw_loss = []
-            train_p_loss = []
-            train_v_loss = []
-            self.model.train()
-            epoch_time = time.time()
-            for i, (target_data, source_data) in enumerate(zip(cycle(train_target_loader), train_source_loader)):
-                # compute loss on the source domain
-                batch_x, batch_y, batch_x_mark, batch_y_mark = source_data
-                
-                iter_count += 1
-                model_optim.zero_grad()
-                masks = batch_y.float()[:, :, 3:5]
-                cell_file_id = batch_y.float()[:, :, 5]
-                cell_file_id_array = cell_file_id[:, 0].detach().cpu().numpy()
-                cycle_distance_label = batch_y.float().to(self.device)[:, :, 6][:, self.args.seq_len - 1].unsqueeze(-1)
-                total_different_files = list(
-                    set(list(cell_file_id_array)))  # the different files contained in this batch
-                cost_time = batch_y.float().to(self.device)[:, :, 2]
-                batch_x = batch_x.float().to(self.device)[:, :, :2]
-                batch_y = batch_y.float().to(self.device)[:, :, :2]
-
-                batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
-
-                # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
-                # encoder - decoder
-                if self.args.output_attention:
-                    outputs, _, enc_out, cycle_distance_outputs = self.model(batch_x, batch_x_mark, dec_inp,
-                                                                       batch_y_mark)
-                else:
-                    outputs, enc_out, cycle_distance_outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-
-                f_dim = -1 if self.args.features == 'MS' else 0
-                outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                masks = masks[:, -self.args.pred_len:, :].to(self.device)
-                if self.args.loss == 'mse':
-                    loss = criterion(outputs, batch_y)
-                    loss = torch.sum(loss * masks) / torch.sum(masks != 0)
-
-
-                # compute loss on the target domain
-                batch_x, batch_y, batch_x_mark, batch_y_mark = target_data
-                masks = batch_y.float()[:, :, 3:5]
-                cell_file_id = batch_y.float()[:, :, 5]
-                cell_file_id_array = cell_file_id[:, 0].detach().cpu().numpy()
-
-                batch_x = batch_x.float().to(self.device)[:, :, :2]
-                batch_y = batch_y.float().to(self.device)[:, :, :2]
-
-                batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
-
-                # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
-                # encoder - decoder
-                if self.args.output_attention:
-                    outputs, _, enc_target_out, cycle_distance_outputs = self.model(batch_x, batch_x_mark, dec_inp,
-                                                                       batch_y_mark)
-                else:
-                    outputs, enc_target_out, cycle_distance_outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-
-                f_dim = -1 if self.args.features == 'MS' else 0
-                outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                masks = masks[:, -self.args.pred_len:, :].to(self.device)
-                if self.args.loss == 'mse':
-                    loss_target = criterion(outputs, batch_y)
-                    loss_target = torch.sum(loss_target * masks) / torch.sum(masks != 0)
-                
-                loss = loss + loss_target
-                # compute the MMD loss
-                mmd_loss_iter = mmd_Loss(enc_out.reshape(-1, enc_out.shape[-1]), enc_target_out.reshape(-1, enc_target_out.shape[-1]))
-                loss += mmd_loss_iter
-                
-                
-                train_loss.append(loss.item())
-
-                if (i + 1) % 50 == 0:
-                    print(f'\titers: {i + 1}, epoch: {epoch + 1} | loss: {loss.item():.4f}')
-                    speed = (time.time() - time_now) / iter_count
-                    left_time = speed * ((self.args.train_epochs - epoch) * train_steps - i)
-                    print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
-                    # iter_count = 0
-                    time_now = time.time()
-                loss.backward()
-                model_optim.step()
-
-            print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
-            train_loss = np.average(train_loss)
-            train_raw_loss = np.average(train_raw_loss)
-            train_p_loss = np.average(train_p_loss)
-            train_v_loss = np.average(train_v_loss)
-            if self.args.vali_loss == 'nw':
-                vali_loss, vali_total_raw_loss, vali_total_proportion_loss, vali_total_voltage_limitation_loss = self.vali(
-                    vali_data, vali_loader, criterion, epoch)
-            elif self.args.vali_loss == 'w':
-                vali_set_files = train_source_data.val_files
-                test_set_files = train_source_data.test_files
-                vali_loss, vali_total_raw_loss, vali_total_proportion_loss, vali_total_voltage_limitation_loss = self.vali_new(
-                    vali_set_files, setting)
-            elif self.args.vali_loss == 'wr':
-                vali_set_files = train_source_data.val_files
-                test_set_files = train_source_data.test_files
-                vali_loss, vali_total_raw_loss, vali_total_proportion_loss, vali_total_voltage_limitation_loss = self.vali_new_robust(
-                    vali_set_files, setting)
-
-            print(
-                f"Epoch: {epoch + 1}, Steps: {train_steps} | Train Loss: {train_loss:.7f} | Train raw loss: {train_raw_loss:.7f} | "
-                f"Train_p_loss: {train_p_loss:.7f} | Train_v_loss: {train_v_loss:.7f}\n"
-                f"Vali Loss: {vali_loss:.7f} | Vali raw loss: {vali_total_raw_loss:.7f} | Vali_p_loss: {vali_total_proportion_loss:.7f} | Vali_v_loss: {vali_total_voltage_limitation_loss:.7f}\n")
-            if -vali_loss > best_score:
-                best_score = -vali_loss  # update the score
-            early_stopping(vali_loss, self.model, path)
-            if early_stopping.early_stop:
-                print("Early stopping")
-                break
-
-            adjust_learning_rate(model_optim, epoch + 1, self.args)
-
-        best_model_path = path + '/' + 'checkpoint.pth'
-        self.model.load_state_dict(torch.load(best_model_path))
-        if self.args.vali_loss == 'nw':
-            vali_loss, vali_total_raw_loss, vali_total_proportion_loss, vali_total_voltage_limitation_loss = self.vali(
-                    vali_data, vali_loader, criterion, epoch)
-            test_loss, test_total_raw_loss, test_total_proportion_loss, test_total_voltage_limitation_loss = self.vali(
-                    test_data, test_loader, criterion, epoch)
-        elif self.args.vali_loss == 'w':
-            vali_set_files = train_source_data.val_files
-            test_set_files = train_source_data.test_files
-            vali_loss, vali_total_raw_loss, vali_total_proportion_loss, vali_total_voltage_limitation_loss = self.vali_new(
-                    vali_set_files, setting)
-            test_loss, test_total_raw_loss, test_total_proportion_loss, test_total_voltage_limitation_loss = self.vali_new(
-                    test_set_files, setting)
-        elif self.args.vali_loss == 'wr':
-            vali_set_files = train_source_data.val_files
-            test_set_files = train_source_data.test_files
-            vali_loss, vali_total_raw_loss, vali_total_proportion_loss, vali_total_voltage_limitation_loss = self.vali_new_robust(
-                    vali_set_files, setting)
-            test_loss, test_total_raw_loss, test_total_proportion_loss, test_total_voltage_limitation_loss = self.vali_new_robust(
-                    test_set_files, setting)
-
-        return self.model
-    
-    
     def train(self, setting):
-        if self.args.DA:
-            self.train_DA(setting)
-            return self.model
         train_data, train_loader = self._get_data(flag='train')
         vali_data, vali_loader = self._get_data(flag='val')
         test_data, test_loader = self._get_data(flag='test')
@@ -1431,15 +1289,12 @@ class Exp_Main(Exp_Basic):
         r2_count = 0
         bad_count = 0
         bad_count_Ed = 0
-
-        total_mae_Qd = []
-        total_mae_Ed = []
-        total_mape_Qd = []
-        total_mape_Ed = []
-        total_RMSE_Qd = []
-        total_RMSE_Ed = []
-        total_alpha_acc_Qd = []
-        total_alpha_acc_Ed = []
+        total_r2_Qd = 0
+        total_r2_Ed = 0
+        total_mae_Qd = 0
+        total_mae_Ed = 0
+        total_mape_Qd = 0
+        total_mape_Ed = 0
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(pred_loader):
                 # temp_mark = batch_x_mark[0, 0, 0]
@@ -1482,38 +1337,48 @@ class Exp_Main(Exp_Basic):
 
                 transformed_pred = transformed_pred[masks[0, :, 0] == 1]
                 transformed_true = transformed_true[masks[0, :, 0] == 1]
-                
-                tmp_mapes = np.abs(transformed_true - transformed_pred) / transformed_true
-                tmp_mapes_Qd = tmp_mapes[:, 0] * 100
-                tmp_mapes_Ed = tmp_mapes[:, 1] * 100
-                tmp_alpha_Qd = np.sum(tmp_mapes_Qd<=robust_threshold) / tmp_mapes_Qd.shape[0]
-                tmp_alpha_Ed = np.sum(tmp_mapes_Ed<=robust_threshold) / tmp_mapes_Ed.shape[0]
-                
-                
-                mapes = np.mean(np.abs(transformed_true - transformed_pred) / transformed_true, axis=0)
-                maes = np.mean(np.abs(transformed_true - transformed_pred), axis=0)
-                mse_Qd = np.mean((transformed_true[:,0] - transformed_pred[:,0])*(transformed_true[:,0] - transformed_pred[:,0]))
-                mse_Ed = np.mean((transformed_true[:,1] - transformed_pred[:,1])*(transformed_true[:,1] - transformed_pred[:,1]))
+                # fig = plt.figure(figsize=(7, 3))
+                # plt_cycles = cycles[:len(transformed_pred)]
+                # plt.subplot(1, 2, 1)
+                # plt.xlabel('Cycle number')
+                # plt.ylabel('Discharging capacity (Ah)')
+                # plt.plot(plt_cycles, transformed_pred[:,0], label='predicted trajectory')
+                # plt.plot(plt_cycles, transformed_true[:,0], label='measured trajectory')
+                # set_ax_linewidth(plt.gca())
+                # set_ax_font_size(plt.gca())
+                # plt.subplot(1, 2, 2)
+                # plt.xlabel('Cycle number')
+                # plt.ylabel('Discharging energy (Wh)')
+                # plt.plot(plt_cycles, transformed_pred[:,1], label='predicted trajectory')
+                # plt.plot(plt_cycles, transformed_true[:,1], label='measured trajectory')
+                # fig.tight_layout()  # 调整整体空白
+                # plt.subplots_adjust(wspace=0.25, hspace=0)  # 调整子图间距
+                # plt.legend()
+                # set_ax_linewidth(plt.gca())
+                # set_ax_font_size(plt.gca())
+                # plt.savefig(f'./visual_figs/SI_figures/RBDPNet_{plt_cycles[0]}.pdf', bbox_inches='tight')
+                # plt.show()
+
+                mapes = (np.abs(transformed_true - transformed_pred) / transformed_true)
+                maes = np.abs(transformed_true - transformed_pred)
                 r2_Qd = r2_score(transformed_true[:, 0], transformed_pred[:, 0])
                 r2_Ed = r2_score(transformed_true[:, 1], transformed_pred[:, 1])
-                maes_Qd = maes[0]
-                maes_Ed = maes[1]
-                rmse_Qd = np.sqrt(mse_Qd)
-                rmse_Ed = np.sqrt(mse_Ed)
-                mapes_Qd = mapes[0] * 100
-                mapes_Ed = mapes[1] * 100
-                
+                r2_count += 1
+                maes_Qd = maes[:, 0]
+                maes_Ed = maes[:, 1]
+                mapes_Qd = mapes[:, 0] * 100
+                mapes_Ed = mapes[:, 1] * 100
 
-                total_mae_Qd.append(float(maes_Qd))
-                total_mae_Ed.append(float(maes_Ed))
-                total_mape_Qd.append(float(mapes_Qd))
-                total_mape_Ed.append(float(mapes_Ed))
-                total_RMSE_Qd.append(float(rmse_Qd))
-                total_RMSE_Ed.append(float(rmse_Ed))
-                total_alpha_acc_Qd.append(tmp_alpha_Qd)
-                total_alpha_acc_Ed.append(tmp_alpha_Ed)
-
-                
+                total_mae_Qd += np.sum(maes_Qd)
+                total_mae_Ed += np.sum(maes_Ed)
+                total_mape_Qd += np.sum(mapes_Qd)
+                total_mape_Ed += np.sum(mapes_Ed)
+                total_r2_Qd += r2_Qd
+                total_r2_Ed += r2_Ed
+                bad_count += np.sum(mapes_Qd > robust_threshold)
+                bad_count_Ed += np.sum(mapes_Ed > robust_threshold)
+                total_count += transformed_true.shape[0]
+                tmp_alpha_Qd, tmp_alpha_Ed = 1 - bad_count / total_count, 1 - bad_count_Ed / total_count
                 detailed_alphas += [(tmp_alpha_Ed + tmp_alpha_Qd) / 2]
                 preds.append(pred)
                 trues.append(true)
@@ -1521,19 +1386,12 @@ class Exp_Main(Exp_Basic):
 
         cell_Qd_mae, cell_Qd_mape, cell_Qd_mae_std, cell_Qd_mape_std, cell_Ed_mae, cell_Ed_mape, cell_Ed_mae_std, cell_Ed_mape_std, r2_Qd, r2_Ed = visual_one_cell(
             gt_trajectory, pred_trajectory, save_path=save_path)
-        new_cell_maes_Qd = float(np.mean(total_mae_Qd))
-        new_cell_maes_Ed = float(np.mean(total_mae_Ed))
-        new_cell_mapes_Qd = float(np.mean(total_mape_Qd))
-        new_cell_mapes_Ed = float(np.mean(total_mape_Ed))
-        new_cell_rmse_Qd = float(np.mean(total_RMSE_Qd))
-        new_cell_rmse_Ed = float(np.mean(total_RMSE_Ed))
-        
-        new_cell_alpha_acc_Qd = np.mean(total_alpha_acc_Qd)
-        new_cell_alpha_acc_Ed = np.mean(total_alpha_acc_Ed)
-        
+        new_cell_maes_Qd = total_mae_Qd / total_count
+        new_cell_maes_Ed = total_mae_Ed / total_count
+        new_cell_mapes_Qd = total_mape_Qd / total_count
+        new_cell_mapes_Ed = total_mape_Ed / total_count
 
-        return new_cell_maes_Qd, new_cell_mapes_Qd, 0, 0, new_cell_maes_Ed, new_cell_mapes_Ed, 0, 0, gt_trajectory, pred_trajectory, r2_Qd, r2_Ed, new_cell_alpha_acc_Qd, new_cell_alpha_acc_Ed, detailed_alphas, new_cell_rmse_Qd, new_cell_rmse_Ed,\
-            total_RMSE_Qd, total_RMSE_Ed, total_mae_Qd, total_mae_Ed
+        return new_cell_maes_Qd, new_cell_mapes_Qd, 0, 0, new_cell_maes_Ed, new_cell_mapes_Ed, 0, 0, gt_trajectory, pred_trajectory, r2_Qd, r2_Ed, 1 - bad_count / total_count, 1 - bad_count_Ed / total_count, detailed_alphas
 
     def visualize_enc_out(self, setting, load=True, set_dataset='', save_path=''):
         pred_data, pred_loader = self._get_data(flag='set_files', set_data=set_dataset)
