@@ -8,6 +8,7 @@ outs/
 logs/
 dataset/
 detailed_results/
+wandb/
 
 # C extensions
 *.so
