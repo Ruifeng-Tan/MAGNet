@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import json
 from sklearn.metrics import mean_squared_error, mean_absolute_error
+import wandb
 
 warnings.filterwarnings('ignore')
 def set_ax_font_size(ax, fontsize=10):
@@ -167,9 +168,13 @@ class Exp_Main(Exp_Basic):
                 self.args.set_files = [file]
                 if 'NC' in self.args.root_path:
                     condition = file.split('#')[0] 
-                else:
+                elif 'NatureEnergy' in self.root_path:
                     cell_name = file.split('.')[0]
                     condition = fixed_files.NE_name_policy[cell_name]
+                elif 'HUST' in self.root_path:
+                    cell_name = file.split('.')[0]
+                    key = cell_name.split('_')[1]
+                    condition = fixed_files.EES_name_policy[key][0]
                 cell_Qd_mae, cell_Qd_mape, cell_Qd_mae_std, cell_Qd_mape_std, cell_Ed_mae, cell_Ed_mape, cell_Ed_mae_std, cell_Ed_mape_std, gt_trajectory, pred_trajectory, r2_Qd, r2_Ed, alpha_Qd, alpha_Ed, _ = self.predict_use_during_training(
                     setting, load=load,
                     save_path='')
@@ -500,6 +505,8 @@ class Exp_Main(Exp_Basic):
             vali_loss, vali_total_raw_loss, vali_total_proportion_loss, vali_total_voltage_limitation_loss = self.vali_new_robust(
                 vali_set_files, setting)
 
+            # record
+            wandb.log({"epoch": epoch, "train_loss": train_loss, "dev_mape": vali_loss, "test_mape": -1})
             print(
                 f"Epoch: {epoch + 1}, Steps: {train_steps} | Train Loss: {train_loss:.7f} | Train raw loss: {train_raw_loss:.7f} | "
                 f"Train_p_loss: {train_p_loss:.7f} | Train_v_loss: {train_v_loss:.7f}\n"
@@ -521,6 +528,7 @@ class Exp_Main(Exp_Basic):
                 vali_set_files, setting)
         test_loss, test_total_raw_loss, test_total_proportion_loss, test_total_voltage_limitation_loss = self.vali_new_robust(
                 test_set_files, setting,load=True)
+        wandb.log({"epoch": epoch, "train_loss": train_loss, "dev_mape": vali_loss, "test_mape": test_loss})
         print(path)
         return self.model
 
@@ -674,6 +682,8 @@ class Exp_Main(Exp_Basic):
                 vali_loss, vali_total_raw_loss, vali_total_proportion_loss, vali_total_voltage_limitation_loss = self.vali_new_robust(
                     vali_set_files, setting)
 
+            # record
+            wandb.log({"epoch": epoch, "train_loss": train_loss, "dev_mape": vali_loss, "test_mape": -1})
             print(
                 f"Epoch: {epoch + 1}, Steps: {train_steps} | Train Loss: {train_loss:.7f} | Train raw loss: {train_raw_loss:.7f} | "
                 f"Train_p_loss: {train_p_loss:.7f} | Train_v_loss: {train_v_loss:.7f}\n"
@@ -708,7 +718,8 @@ class Exp_Main(Exp_Basic):
                     vali_set_files, setting)
             test_loss, test_total_raw_loss, test_total_proportion_loss, test_total_voltage_limitation_loss = self.vali_new_robust(
                     test_set_files, setting)
-
+        wandb.log({"epoch": epoch, "train_loss": train_loss, "dev_mape": vali_loss, "test_mape": test_loss})
+        print(path)
         return self.model
 
     def test(self, setting, test=0):

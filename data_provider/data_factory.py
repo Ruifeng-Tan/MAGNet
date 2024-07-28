@@ -1,4 +1,4 @@
-from data_provider.data_loader import Dataset_Pred, Dataset_Battery_cycle_ShortLongMove
+from data_provider.data_loader import Dataset_Battery_cycle_ShortLongMove
 from torch.utils.data import DataLoader
 
 data_dict = {
@@ -52,8 +52,6 @@ def data_provider(args, flag, set_data):
         drop_last = False
         batch_size = 1
         freq = args.freq
-        if 'Batteries' not in args.data:
-            Data = Dataset_Pred
     else:
         shuffle_flag = True
         drop_last = True

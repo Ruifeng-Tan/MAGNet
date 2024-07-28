@@ -20,7 +20,7 @@ class Model(nn.Module):
         # Embedding
         self.enc_embedding = nn.Linear(3, configs.d_model)
 
-        self.lstm = nn.LSTM(configs.d_model, configs.d_model, 2, bidirectional=True, batch_first=True)
+        self.lstm = nn.LSTM(configs.d_model, configs.d_model, configs.e_layers, bidirectional=True, batch_first=True)
         self.output_layer = nn.Linear(configs.d_model * 2, configs.c_out)
 
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec,

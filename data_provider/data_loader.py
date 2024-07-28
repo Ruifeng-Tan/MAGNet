@@ -65,7 +65,7 @@ class fixed_files:
     EES_policies = []
     for name, policy in EES_name_policy.items():
         if policy not in EES_policies:
-            EES_policies.append(policy)
+            EES_policies.append(policy[0])
     EES_policy2id = dict(zip(EES_policies,[i for i in range(len(EES_policies))]))
 
 
@@ -149,9 +149,10 @@ class Dataset_Battery_cycle_ShortLongMove(Dataset):
                     policy = fixed_files.NE_name_policy[cell_name]
                     domain_id = fixed_files.policy2id[policy]
                     df['file'] = domain_id
-                elif 'EES' in self.root_path:
-                    cell_name = file
-                    policy = fixed_files.EES_name_policy[cell_name]
+                elif 'HUST' in self.root_path:
+                    cell_name = file.split('.')[0]
+                    key = cell_name.split('_')[1]
+                    policy = fixed_files.EES_name_policy[key][0]
                     domain_id = fixed_files.EES_policy2id[policy]
                     df['file'] = domain_id
                 if 'NC' in self.root_path:
@@ -183,9 +184,10 @@ class Dataset_Battery_cycle_ShortLongMove(Dataset):
                     policy = fixed_files.NE_name_policy[cell_name]
                     domain_id = fixed_files.policy2id[policy]
                     df['file'] = domain_id
-                elif 'EES' in self.root_path:
-                    cell_name = file
-                    policy = fixed_files.EES_name_policy[cell_name]
+                elif 'HUST' in self.root_path:
+                    cell_name = file.split('.')[0]
+                    key = cell_name.split('_')[1]
+                    policy = fixed_files.EES_name_policy[key][0]
                     domain_id = fixed_files.EES_policy2id[policy]
                     df['file'] = domain_id
                 if 'NC' in self.root_path:
@@ -216,9 +218,10 @@ class Dataset_Battery_cycle_ShortLongMove(Dataset):
                     policy = fixed_files.NE_name_policy[cell_name]
                     domain_id = fixed_files.policy2id[policy]
                     df['file'] = domain_id
-                elif 'EES' in self.root_path:
-                    cell_name = file
-                    policy = fixed_files.EES_name_policy[cell_name]
+                elif 'HUST' in self.root_path:
+                    cell_name = file.split('.')[0]
+                    key = cell_name.split('_')[1]
+                    policy = fixed_files.EES_name_policy[key][0]
                     domain_id = fixed_files.EES_policy2id[policy]
                     df['file'] = domain_id
                 if 'NC' in self.root_path:
@@ -250,9 +253,10 @@ class Dataset_Battery_cycle_ShortLongMove(Dataset):
                     policy = fixed_files.NE_name_policy[cell_name]
                     domain_id = fixed_files.policy2id[policy]
                     df['file'] = domain_id
-                elif 'EES' in self.root_path:
-                    cell_name = file
-                    policy = fixed_files.EES_name_policy[cell_name]
+                elif 'HUST' in self.root_path:
+                    cell_name = file.split('.')[0]
+                    key = cell_name.split('_')[1]
+                    policy = fixed_files.EES_name_policy[key][0]
                     domain_id = fixed_files.EES_policy2id[policy]
                     df['file'] = domain_id
                 if 'NC' in self.root_path:
