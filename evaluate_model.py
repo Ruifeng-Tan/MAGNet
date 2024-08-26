@@ -36,11 +36,9 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--args_path', type=str,
-                        default='./results/NE_meta_Informer_Batteries_cycle_SLMove_lr1e-06_metalr0.0075_mavg15_ftM_sl20_ll20_pl500_dm14_nh4_el2_dl2_df4_fc5_fc21_ebCycle_dtFalse_valratio0.5_test_lossawmse_vallossnw_dp0.0_bs128_wd0_mb2_agamma0.2_lradjtype4_0',
+                        default='./results/NE_vLSTM_Batteries_cycle_SLMove_lr0.0075_metalr0.0075_mavg15_ftM_sl20_ll20_pl500_dm12_nh4_el2_dl2_df4_fc5_fc21_ebCycle_dtFalse_valratio0.5_test_lossmse_vallossnw_dp0.0_bs128_wd0_mb2_agamma0.2_lradjtype4_0',
                         help='just copy the path to the ./results/xxx of the trained model here')
-    
-    
-    parser.add_argument('--save', action='store_true',
+    parser.add_argument('--save', action= 'store_true',
                         default=True,
                         help='set True to save the results')
     parser.add_argument('--alpha', type=float,
@@ -59,9 +57,11 @@ def main():
             device_ids = args.devices.split(',')
             args.device_ids = [int(id_) for id_ in device_ids]
             args.gpu = args.device_ids[0]
-        if 'NC' in args.root_path:
+        if 'NCA' in args.root_path:
             args.nominal_capacity = 3.5
             short_lived_threshold = 200
+        elif 'MCM' in args.root_path:
+            args.nominal_capacity = 5
         else:
             args.nominal_capacity = 1.1
             short_lived_threshold = float('inf')  # this is not the judgement for NE
@@ -70,8 +70,13 @@ def main():
         elif args.root_path == './dataset/NC_NCA_autoformer_cycle_data/':
             args.set_files = [i for i in fixed_files.NC_test_files if 'NCA' in i]
             # args.set_files = ['NCA_CY25-1_1-#5.csv']
-        else:
+        elif args.root_path == './dataset/NatureEnergy_cycle_data/':
             args.set_files = fixed_files.NE_test_files
+        elif args.root_path == './dataset/UofM_cycle_data/':
+            args.set_files = fixed_files.UofM_test_files
+        else:
+            raise Exception('add your dataset here')
+            
         if 'FT' in args.__dict__ and args.FT:
             setting = 'FT_{}_{}_{}_lr{}_metalr{}_mavg{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_fc2{}_eb{}_dt{}_valratio{}_{}_loss{}_valloss{}_dp{}_bs{}_wd{}_mb{}_agamma{}_lradj{}_{}'.format(
                 args.model_id,
@@ -172,9 +177,13 @@ def main():
         df = pd.read_csv(f'{root_path}{file}')
         if 'NC' in root_path:
             condition = file.split('#')[0] 
-        else:
+        elif 'NatureEnergy' in root_path:
             cell_name = file.split('.')[0]
             condition = fixed_files.NE_name_policy[cell_name]
+        elif 'UofM' in root_path:
+            condition = cell_name = file.split('.')[0]
+        else:
+            raise Exception('add your dataset here')
         # if not len(df) >= args.seq_len + args.pred_len:
         #     continue
         name = file.split('.')[0] + f'_{len(df)}.pdf'

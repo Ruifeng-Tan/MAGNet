@@ -168,13 +168,12 @@ class Exp_Main(Exp_Basic):
                 self.args.set_files = [file]
                 if 'NC' in self.args.root_path:
                     condition = file.split('#')[0] 
-                elif 'NatureEnergy' in self.root_path:
+                elif 'NatureEnergy' in self.args.root_path:
                     cell_name = file.split('.')[0]
                     condition = fixed_files.NE_name_policy[cell_name]
-                elif 'HUST' in self.root_path:
-                    cell_name = file.split('.')[0]
-                    key = cell_name.split('_')[1]
-                    condition = fixed_files.EES_name_policy[key][0]
+                elif 'UofM' in self.args.root_path:
+                    condition = file.split('.')[0] 
+                
                 cell_Qd_mae, cell_Qd_mape, cell_Qd_mae_std, cell_Qd_mape_std, cell_Ed_mae, cell_Ed_mape, cell_Ed_mae_std, cell_Ed_mape_std, gt_trajectory, pred_trajectory, r2_Qd, r2_Ed, alpha_Qd, alpha_Ed, _ = self.predict_use_during_training(
                     setting, load=load,
                     save_path='')
@@ -252,6 +251,7 @@ class Exp_Main(Exp_Basic):
         if not os.path.exists(path):
             os.makedirs(path)
         get_parameter_number(self.model)
+
         time_now = time.time()
 
         train_steps = len(train_loader)
@@ -1300,12 +1300,15 @@ class Exp_Main(Exp_Basic):
         r2_count = 0
         bad_count = 0
         bad_count_Ed = 0
-        total_r2_Qd = 0
-        total_r2_Ed = 0
-        total_mae_Qd = 0
-        total_mae_Ed = 0
-        total_mape_Qd = 0
-        total_mape_Ed = 0
+
+        total_mae_Qd = []
+        total_mae_Ed = []
+        total_mape_Qd = []
+        total_mape_Ed = []
+        total_RMSE_Qd = []
+        total_RMSE_Ed = []
+        total_alpha_acc_Qd = []
+        total_alpha_acc_Ed = []
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(pred_loader):
                 # temp_mark = batch_x_mark[0, 0, 0]
@@ -1348,48 +1351,38 @@ class Exp_Main(Exp_Basic):
 
                 transformed_pred = transformed_pred[masks[0, :, 0] == 1]
                 transformed_true = transformed_true[masks[0, :, 0] == 1]
-                # fig = plt.figure(figsize=(7, 3))
-                # plt_cycles = cycles[:len(transformed_pred)]
-                # plt.subplot(1, 2, 1)
-                # plt.xlabel('Cycle number')
-                # plt.ylabel('Discharging capacity (Ah)')
-                # plt.plot(plt_cycles, transformed_pred[:,0], label='predicted trajectory')
-                # plt.plot(plt_cycles, transformed_true[:,0], label='measured trajectory')
-                # set_ax_linewidth(plt.gca())
-                # set_ax_font_size(plt.gca())
-                # plt.subplot(1, 2, 2)
-                # plt.xlabel('Cycle number')
-                # plt.ylabel('Discharging energy (Wh)')
-                # plt.plot(plt_cycles, transformed_pred[:,1], label='predicted trajectory')
-                # plt.plot(plt_cycles, transformed_true[:,1], label='measured trajectory')
-                # fig.tight_layout()  # 调整整体空白
-                # plt.subplots_adjust(wspace=0.25, hspace=0)  # 调整子图间距
-                # plt.legend()
-                # set_ax_linewidth(plt.gca())
-                # set_ax_font_size(plt.gca())
-                # plt.savefig(f'./visual_figs/SI_figures/RBDPNet_{plt_cycles[0]}.pdf', bbox_inches='tight')
-                # plt.show()
-
-                mapes = (np.abs(transformed_true - transformed_pred) / transformed_true)
-                maes = np.abs(transformed_true - transformed_pred)
+                
+                tmp_mapes = np.abs(transformed_true - transformed_pred) / transformed_true
+                tmp_mapes_Qd = tmp_mapes[:, 0] * 100
+                tmp_mapes_Ed = tmp_mapes[:, 1] * 100
+                tmp_alpha_Qd = np.sum(tmp_mapes_Qd<=robust_threshold) / tmp_mapes_Qd.shape[0]
+                tmp_alpha_Ed = np.sum(tmp_mapes_Ed<=robust_threshold) / tmp_mapes_Ed.shape[0]
+                
+                
+                mapes = np.mean(np.abs(transformed_true - transformed_pred) / transformed_true, axis=0)
+                maes = np.mean(np.abs(transformed_true - transformed_pred), axis=0)
+                mse_Qd = np.mean((transformed_true[:,0] - transformed_pred[:,0])*(transformed_true[:,0] - transformed_pred[:,0]))
+                mse_Ed = np.mean((transformed_true[:,1] - transformed_pred[:,1])*(transformed_true[:,1] - transformed_pred[:,1]))
                 r2_Qd = r2_score(transformed_true[:, 0], transformed_pred[:, 0])
                 r2_Ed = r2_score(transformed_true[:, 1], transformed_pred[:, 1])
-                r2_count += 1
-                maes_Qd = maes[:, 0]
-                maes_Ed = maes[:, 1]
-                mapes_Qd = mapes[:, 0] * 100
-                mapes_Ed = mapes[:, 1] * 100
+                maes_Qd = maes[0]
+                maes_Ed = maes[1]
+                rmse_Qd = np.sqrt(mse_Qd)
+                rmse_Ed = np.sqrt(mse_Ed)
+                mapes_Qd = mapes[0] * 100
+                mapes_Ed = mapes[1] * 100
+                
 
-                total_mae_Qd += np.sum(maes_Qd)
-                total_mae_Ed += np.sum(maes_Ed)
-                total_mape_Qd += np.sum(mapes_Qd)
-                total_mape_Ed += np.sum(mapes_Ed)
-                total_r2_Qd += r2_Qd
-                total_r2_Ed += r2_Ed
-                bad_count += np.sum(mapes_Qd > robust_threshold)
-                bad_count_Ed += np.sum(mapes_Ed > robust_threshold)
-                total_count += transformed_true.shape[0]
-                tmp_alpha_Qd, tmp_alpha_Ed = 1 - bad_count / total_count, 1 - bad_count_Ed / total_count
+                total_mae_Qd.append(float(maes_Qd))
+                total_mae_Ed.append(float(maes_Ed))
+                total_mape_Qd.append(float(mapes_Qd))
+                total_mape_Ed.append(float(mapes_Ed))
+                total_RMSE_Qd.append(float(rmse_Qd))
+                total_RMSE_Ed.append(float(rmse_Ed))
+                total_alpha_acc_Qd.append(tmp_alpha_Qd)
+                total_alpha_acc_Ed.append(tmp_alpha_Ed)
+
+                
                 detailed_alphas += [(tmp_alpha_Ed + tmp_alpha_Qd) / 2]
                 preds.append(pred)
                 trues.append(true)
@@ -1397,12 +1390,19 @@ class Exp_Main(Exp_Basic):
 
         cell_Qd_mae, cell_Qd_mape, cell_Qd_mae_std, cell_Qd_mape_std, cell_Ed_mae, cell_Ed_mape, cell_Ed_mae_std, cell_Ed_mape_std, r2_Qd, r2_Ed = visual_one_cell(
             gt_trajectory, pred_trajectory, save_path=save_path)
-        new_cell_maes_Qd = total_mae_Qd / total_count
-        new_cell_maes_Ed = total_mae_Ed / total_count
-        new_cell_mapes_Qd = total_mape_Qd / total_count
-        new_cell_mapes_Ed = total_mape_Ed / total_count
+        new_cell_maes_Qd = float(np.mean(total_mae_Qd))
+        new_cell_maes_Ed = float(np.mean(total_mae_Ed))
+        new_cell_mapes_Qd = float(np.mean(total_mape_Qd))
+        new_cell_mapes_Ed = float(np.mean(total_mape_Ed))
+        new_cell_rmse_Qd = float(np.mean(total_RMSE_Qd))
+        new_cell_rmse_Ed = float(np.mean(total_RMSE_Ed))
+        
+        new_cell_alpha_acc_Qd = np.mean(total_alpha_acc_Qd)
+        new_cell_alpha_acc_Ed = np.mean(total_alpha_acc_Ed)
+        
 
-        return new_cell_maes_Qd, new_cell_mapes_Qd, 0, 0, new_cell_maes_Ed, new_cell_mapes_Ed, 0, 0, gt_trajectory, pred_trajectory, r2_Qd, r2_Ed, 1 - bad_count / total_count, 1 - bad_count_Ed / total_count, detailed_alphas
+        return new_cell_maes_Qd, new_cell_mapes_Qd, 0, 0, new_cell_maes_Ed, new_cell_mapes_Ed, 0, 0, gt_trajectory, pred_trajectory, r2_Qd, r2_Ed, new_cell_alpha_acc_Qd, new_cell_alpha_acc_Ed, detailed_alphas, new_cell_rmse_Qd, new_cell_rmse_Ed,\
+            total_RMSE_Qd, total_RMSE_Ed, total_mae_Qd, total_mae_Ed
 
     def visualize_enc_out(self, setting, load=True, set_dataset='', save_path=''):
         pred_data, pred_loader = self._get_data(flag='set_files', set_data=set_dataset)

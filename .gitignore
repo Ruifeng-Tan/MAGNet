@@ -9,6 +9,9 @@ logs/
 dataset/
 detailed_results/
 wandb/
+visual_figs/
+other_scripts/
+results/
 
 # C extensions
 *.so

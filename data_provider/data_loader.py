@@ -46,9 +46,9 @@ class fixed_files:
     NE_test_files = ['b2c46.csv', 'b2c44.csv', 'b2c43.csv', 'b2c42.csv', 'b2c41.csv', 'b2c39.csv', 'b2c38.csv', 'b2c35.csv', 'b2c12.csv', 'b2c27.csv', 'b2c19.csv', 'b2c4.csv', 
                      'b2c3.csv', 'b2c2.csv', 'b2c1.csv', 'b2c0.csv']
     
-    EES_train_files = ['tagged_2-6.csv', 'tagged_2-3.csv', 'tagged_3-4.csv', 'tagged_3-2.csv', 'tagged_7-7.csv', 'tagged_5-4.csv', 'tagged_1-3.csv', 'tagged_6-1.csv', 'tagged_3-3.csv', 'tagged_8-8.csv', 'tagged_5-3.csv', 'tagged_6-8.csv', 'tagged_3-1.csv', 'tagged_5-2.csv', 'tagged_9-3.csv', 'tagged_2-2.csv', 'tagged_10-2.csv', 'tagged_4-5.csv', 'tagged_4-7.csv', 'tagged_4-2.csv', 'tagged_9-6.csv', 'tagged_8-4.csv', 'tagged_10-6.csv', 'tagged_3-8.csv', 'tagged_5-6.csv', 'tagged_6-2.csv', 'tagged_10-5.csv', 'tagged_8-6.csv', 'tagged_3-7.csv', 'tagged_6-3.csv', 'tagged_3-6.csv', 'tagged_8-7.csv', 'tagged_9-1.csv', 'tagged_10-7.csv', 'tagged_4-8.csv', 'tagged_5-1.csv', 'tagged_4-1.csv', 'tagged_9-4.csv', 'tagged_9-5.csv', 'tagged_10-1.csv', 'tagged_6-6.csv', 'tagged_5-5.csv', 'tagged_6-4.csv', 'tagged_3-5.csv', 'tagged_7-1.csv', 'tagged_6-5.csv', 'tagged_1-7.csv', 'tagged_2-7.csv', 'tagged_7-8.csv', 'tagged_10-3.csv', 'tagged_1-5.csv']
-    EES_val_files = ['tagged_9-7.csv', 'tagged_10-4.csv', 'tagged_8-3.csv', 'tagged_9-2.csv', 'tagged_1-8.csv', 'tagged_7-5.csv', 'tagged_9-8.csv', 'tagged_8-2.csv', 'tagged_1-2.csv', 'tagged_7-2.csv']
-    EES_test_files = ['tagged_8-1.csv', 'tagged_10-8.csv', 'tagged_4-4.csv', 'tagged_1-6.csv', 'tagged_4-3.csv', 'tagged_7-6.csv', 'tagged_2-4.csv', 'tagged_4-6.csv', 'tagged_8-5.csv', 'tagged_1-1.csv', 'tagged_5-7.csv', 'tagged_2-5.csv', 'tagged_7-3.csv', 'tagged_7-4.csv', 'tagged_2-8.csv', 'tagged_1-4.csv']
+    UofM_train_files = ['04.csv', '08.csv', '17.csv', '10.csv', '20.csv', '11.csv', '12.csv', '02.csv', '16.csv', '19.csv', '01.csv', '18.csv', '15.csv']
+    UofM_val_files = ['05.csv', '14.csv', '07.csv', '13.csv']
+    UofM_test_files = ['03.csv', '09.csv', '21.csv', '06.csv']
 
     # domain id for Nature energy dataset
     NE_unseen_test_files = NE_test_files
@@ -59,15 +59,6 @@ class fixed_files:
             policies.append(policy)
     policy2id = dict(zip(policies,[i for i in range(len(policies))]))
     
-    # domain id for EES dataset
-    EES_unseen_test_files = EES_test_files
-    EES_name_policy = json.load(open('./dataset/HUST_name_policy.json'))
-    EES_policies = []
-    for name, policy in EES_name_policy.items():
-        if policy not in EES_policies:
-            EES_policies.append(policy[0])
-    EES_policy2id = dict(zip(EES_policies,[i for i in range(len(EES_policies))]))
-
 
 class Dataset_Battery_cycle_ShortLongMove(Dataset):
     # I implement a Dataset that can use meta learning for all three datasets in this version.
@@ -80,10 +71,10 @@ class Dataset_Battery_cycle_ShortLongMove(Dataset):
                  features='S', data_path='',
                  target='OT', scale=True, timeenc=0, freq='t', set_files=''):
         root_path = args.root_path
-        if root_path == './dataset/HUST_cycle_data/':
-            self.train_files = fixed_files.EES_train_files
-            self.val_files = fixed_files.EES_val_files
-            self.test_files = fixed_files.EES_test_files
+        if root_path == './dataset/UofM_cycle_data/':
+            self.train_files = fixed_files.UofM_train_files
+            self.val_files = fixed_files.UofM_val_files
+            self.test_files = fixed_files.UofM_test_files
         elif root_path == './dataset/NatureEnergy_cycle_data/':
             self.train_files = fixed_files.NE_train_files
             self.val_files = fixed_files.NE_val_files
@@ -149,12 +140,10 @@ class Dataset_Battery_cycle_ShortLongMove(Dataset):
                     policy = fixed_files.NE_name_policy[cell_name]
                     domain_id = fixed_files.policy2id[policy]
                     df['file'] = domain_id
-                elif 'HUST' in self.root_path:
-                    cell_name = file.split('.')[0]
-                    key = cell_name.split('_')[1]
-                    policy = fixed_files.EES_name_policy[key][0]
-                    domain_id = fixed_files.EES_policy2id[policy]
+                elif 'UofM' in self.root_path:
                     df['file'] = domain_id
+                    domain_id += 1
+                    
                 if 'NC' in self.root_path:
                     first_life_df = df.loc[df['Qd'] >= 0.8 * 3.5]
                     df['cycle distance'] = first_life_df['cycle number'].max() - df['cycle number']
@@ -184,12 +173,10 @@ class Dataset_Battery_cycle_ShortLongMove(Dataset):
                     policy = fixed_files.NE_name_policy[cell_name]
                     domain_id = fixed_files.policy2id[policy]
                     df['file'] = domain_id
-                elif 'HUST' in self.root_path:
-                    cell_name = file.split('.')[0]
-                    key = cell_name.split('_')[1]
-                    policy = fixed_files.EES_name_policy[key][0]
-                    domain_id = fixed_files.EES_policy2id[policy]
+                elif 'UofM' in self.root_path:
                     df['file'] = domain_id
+                    domain_id += 1
+
                 if 'NC' in self.root_path:
                     first_life_df = df.loc[df['Qd'] >= 0.8 * 3.5]
                     df['cycle distance'] = first_life_df['cycle number'].max() - df['cycle number']
@@ -218,12 +205,10 @@ class Dataset_Battery_cycle_ShortLongMove(Dataset):
                     policy = fixed_files.NE_name_policy[cell_name]
                     domain_id = fixed_files.policy2id[policy]
                     df['file'] = domain_id
-                elif 'HUST' in self.root_path:
-                    cell_name = file.split('.')[0]
-                    key = cell_name.split('_')[1]
-                    policy = fixed_files.EES_name_policy[key][0]
-                    domain_id = fixed_files.EES_policy2id[policy]
+                elif 'UofM' in self.root_path:
                     df['file'] = domain_id
+                    domain_id += 1
+                    
                 if 'NC' in self.root_path:
                     first_life_df = df.loc[df['Qd'] >= 0.8 * 3.5]
                     df['cycle distance'] = first_life_df['cycle number'].max() - df['cycle number']
@@ -253,12 +238,10 @@ class Dataset_Battery_cycle_ShortLongMove(Dataset):
                     policy = fixed_files.NE_name_policy[cell_name]
                     domain_id = fixed_files.policy2id[policy]
                     df['file'] = domain_id
-                elif 'HUST' in self.root_path:
-                    cell_name = file.split('.')[0]
-                    key = cell_name.split('_')[1]
-                    policy = fixed_files.EES_name_policy[key][0]
-                    domain_id = fixed_files.EES_policy2id[policy]
+                elif 'UofM' in self.root_path:
                     df['file'] = domain_id
+                    domain_id += 1
+
                 if 'NC' in self.root_path:
                     first_life_df = df.loc[df['Qd'] >= 0.8 * 3.5]
                     df['cycle distance'] = first_life_df['cycle number'].max() - df['cycle number']

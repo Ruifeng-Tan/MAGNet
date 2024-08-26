@@ -2,7 +2,8 @@ import random
 import numpy as np
 import torch
 import datetime
-
+import os
+import json
 # fix_seed = 2021
 # random.seed(fix_seed)
 # np.random.seed(fix_seed)
@@ -154,7 +155,9 @@ def main():
                 args.distil,
                 args.val_ratio,
                 args.des, args.loss, args.vali_loss,args.dropout, args.batch_size, args.wd, args.meta_beta, args.auxiliary_gamma,args.lradj, ii)
-
+            os.makedirs(f'./results/{setting}', exist_ok=True)
+            with open(f'./results/{setting}/args.txt', 'w') as f:
+                json.dump(args.__dict__, f)
             exp = Exp(args)  # set experiments
             print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
             if not args.meta_train:
