@@ -1,8 +1,19 @@
-# MAGNet
+# (2024 Energy Storage Materials) MAGNet
 
-This is the Pytorch implementation of MAGNet in the paper: **Forecasting battery degradation trajectory under domain shift with domain generalization**.
+This is the Pytorch implementation of MAGNet in the paper: [**Forecasting battery degradation trajectory under domain shift with domain generalization**](https://www.sciencedirect.com/science/article/pii/S2405829724005518).
 
-
+```
+@article{TAN2024103725,
+title = {Forecasting battery degradation trajectory under domain shift with domain generalization},
+journal = {Energy Storage Materials},
+pages = {103725},
+year = {2024},
+issn = {2405-8297},
+doi = {https://doi.org/10.1016/j.ensm.2024.103725},
+url = {https://www.sciencedirect.com/science/article/pii/S2405829724005518},
+author = {Ruifeng Tan and Xibin Lu and Minhao Cheng and Jia Li and Jiaqiang Huang and Tong-Yi Zhang}
+}
+```
 
 # Requirements
 
