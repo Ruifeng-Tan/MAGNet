@@ -53,10 +53,10 @@ def main():
     parser.add_argument('--enc_in', type=int, default=2, help='encoder input size')
     parser.add_argument('--dec_in', type=int, default=2, help='decoder input size')
     parser.add_argument('--c_out', type=int, default=2, help='output size')
-    parser.add_argument('--d_model', type=int, default=4, help='dimension of model')
+    parser.add_argument('--d_model', type=int, default=12, help='dimension of model')
     parser.add_argument('--n_heads', type=int, default=4, help='num of heads')
     parser.add_argument('--e_layers', type=int, default=2, help='num of encoder layers')
-    parser.add_argument('--d_layers', type=int, default=1, help='num of decoder layers')
+    parser.add_argument('--d_layers', type=int, default=2, help='num of decoder layers')
     parser.add_argument('--d_ff', type=int, default=2, help='dimension of fcn')
     parser.add_argument('--moving_avg', type=int, default=15, help='window size of moving average')
     parser.add_argument('--factor', type=int, default=4, help='attn factor')
@@ -83,14 +83,14 @@ def main():
     parser.add_argument('--train_epochs', type=int, default=50, help='train epochs')
     parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
     parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
-    parser.add_argument('--learning_rate', type=float, default=0.0075, help='optimizer learning rate') # meta
+    parser.add_argument('--learning_rate', type=float, default=1e-6, help='optimizer learning rate') # meta
     parser.add_argument('--meta_learning_rate', type=float, default=0.0075, help='meta optimizer learning rate') # meta
     parser.add_argument('--meta_beta', type=float, default=2, help='weight of the test domain loss')
     parser.add_argument('--auxiliary_gamma', type=float, default=0.2, help='weight of the test domain loss')
-    parser.add_argument('--meta_train', action='store_true', default=False, help='set True to use meta learning') # meta
+    parser.add_argument('--meta_train', action='store_true', default=True, help='set True to use meta learning') # meta
     parser.add_argument('--lr_align', action='store_true', default=False, help='set True to align the lrs of meta and clone')
     parser.add_argument('--des', type=str, default='test', help='exp description')
-    parser.add_argument('--loss', type=str, default='amse', help='loss function options:[mse,wmse,awmse]') # meta
+    parser.add_argument('--loss', type=str, default='awmse', help='loss function options:[mse,wmse,awmse]') # meta
     parser.add_argument('--vali_loss', type=str, default='nw', help='loss function options:[w,nw]')
     parser.add_argument('--gamma1', type=float, default=0.0, help='weight for proportion loss')
     parser.add_argument('--gamma2', type=float, default=0.0, help='weight for voltage limitation loss')
