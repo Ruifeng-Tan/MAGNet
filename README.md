@@ -35,11 +35,11 @@ pip install -r reqruiements.txt
 
 ## Easy reproducibility
 
-To help the reproducibility, we have provided the trained model weights and other necessary files in the `Figshare`, thus you can easily see the main results in this paper. First of all, you need to download the `checkpoints`, `dataset`, `detailed_results`, `fig5` and `results`  folders from the `Figshare` and then put them under the project root folder. After that,  you can reproduce the results using the following scripts:
+To help the reproducibility, we have provided the trained model weights and other necessary files in the `Google drive`, thus you can easily see the main results in this paper. First of all, you need to download the `checkpoints`, `dataset`, `detailed_results`, `fig5` and `results`  folders from the `Google drive` and then put them under the project root folder. After that,  you can reproduce the results using the following scripts:
 
 - evaluate_model.py: You can evaluate the model performance using this Python script.
 
-- Plot_fig3.ipynb: This notebook gives the draft fig. 3 of this paper.
+- plot_fig3_MAE_and_RMSE.ipynb: This notebook gives the draft fig. 3 of this paper.
 
 - visualize_enc_new_conditionLevel.py: You can visualize the embeddings on the NCA dataset using this Python script.
 
@@ -57,7 +57,7 @@ Note that the directory names for pretrained MAGNet weights are as follows:
 
 - LFP dataset: `NE_meta_Informer_Batteries_cycle_SLMove_lr1e-06_metalr0.0075_mavg15_ftM_sl20_ll20_pl500_dm12_nh4_el2_dl2_df4_fc5_fc21_ebCycle_dtFalse_valratio0.5_test_lossawmse_vallossnw_dp0.0_bs128_wd0_mb2_agamma0.2_lradjtype4_0`
 
-  
+- NCM dataset: `NCM_meta_Informer_Batteries_cycle_SLMove_lr1e-06_metalr0.0075_mavg15_ftM_sl10_ll10_pl150_dm12_nh4_el2_dl2_df2_fc4_fc21_ebCycle_dtFalse_valratio0.33_test_lossawmse_vallossnw_dp0.0_bs32_wd0_mb2_agamma0.2_lradjtype4_0`
 
 ## Reproduce from the raw data
 
@@ -76,15 +76,16 @@ For the LFP dataset, you need to download the `LFP_data_process` from the `Googl
 3. utils.py
 4. process_data_Autoformer.ipynb
 
+For the NCM dataset, you can download the raw data from this [link](https://deepblue.lib.umich.edu/data/concern/data_sets/5d86p0488). After that, you can process the dataset using `process_NCM_dataset.ipynb` notebook.
+
 Then, you can put the processed datasets under the `dataset` folder.
 
 **Train the model**
 
-You can reproduce the results in this paper using the same hyperparameters listed in the supplementary information. The code for training models on the NCA and LFP datasets are `run_meta_NCA.py` and `run_meta_NE.py` respectively. The training might cost 20 hours to finish in the LFP dataset.
+You can reproduce the results in this paper using the same hyperparameters listed in the supplementary information. The code for training models on the NCA, NCM and LFP datasets are `run_meta_weighted_NCA.py`, `run_meta_weighted_NCM.py` and `run_meta_weighted_NE.py` respectively. The training might cost 20 hours to finish in the LFP dataset.
 
 ```bash
 # Example
 # The following instruction runs the code in background and saves the ouput in the log.out file.
-nohup python -u run_meta_NE.py &> ./log.out&
-nohup python -u run_meta_NCA.py &> ./log2.out&
+nohup python -u run_meta_weighted_NCA.py &> ./log.out&
 ```

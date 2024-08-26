@@ -2,7 +2,6 @@ import random
 import numpy as np
 import torch
 import datetime
-import wandb
 import os
 import json
 
@@ -23,7 +22,6 @@ from exp.exp_main import Exp_Main
 
 
 def main():
-    wandb.login(key='90b2c598dc4a58105fdcdd8c03ec271984ec7417')
     parser = argparse.ArgumentParser(description='Battery Degradation Forecasting')
 
     # basic config
@@ -123,15 +121,7 @@ def main():
             args.model_id += '_metaAlign'
     print('Args in experiment:')
     print(args)
-    nowtime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    wandb.init(
-        # set the wandb project where this run will be logged
-        project="NCM dataset_new",
-        
-        # track hyperparameters and run metadata
-        config=args.__dict__,
-        name='Short life as test-'+nowtime
-    )
+
     Exp = Exp_Main  
     if args.is_training:
         for ii in range(args.itr):
@@ -176,7 +166,6 @@ def main():
                 exp.predict(setting, True)
 
             torch.cuda.empty_cache()
-    wandb.finish()
 
 if __name__ == "__main__":
     main()
